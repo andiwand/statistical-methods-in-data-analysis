@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 
+from multiprocessing import Pool
 import numpy as np
-import pandas as pd 
+import pandas as pd
 from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
-
-N = 500
-n = 400
-
-mu = np.array([2, 1])
-cov = np.array([[0.8, 0.2], [0.2, 0.6]])
 
 def data_to_x(mu, cov):
     n = len(mu)
@@ -53,43 +48,61 @@ def minimize_ll_fun_gen(samples):
         return result
     return min_ll
 
-mu0 = np.array([0, 0])
-cov0 = np.array([[1, 0], [0, 1]])
-x0 = data_to_x(mu0, np.linalg.inv(cov0))
-method = 'SLSQP'
-options = { 'ftol': 1E-5 }
-
-guesses = []
-for i in range(N):
-    print(i)
+def experiment():
+    n = 400
+    
+    mu = np.array([2, 1])
+    cov = np.array([[0.8, 0.2], [0.2, 0.6]])
+    
+    mu0 = np.array([0, 0])
+    cov0 = np.array([[1, 0], [0, 1]])
+    x0 = data_to_x(mu0, np.linalg.inv(cov0))
+    method = 'SLSQP'
+    options = { 'ftol': 1E-5 }
+    
     samples = np.random.multivariate_normal(mu, cov, n)
     
     fun = minimize_ll_fun_gen(samples)
     opt = minimize(fun, x0, method=method, options=options)
     if not opt.success:
         print('optimize failed')
-        continue
+        return None
     if np.linalg.norm(opt.x[0:2]) > 10E3:
         print('outlier')
-        continue
+        return None
     guess_mu, guess_cov_inv = x_to_data(opt.x)
     guess_cov = np.linalg.inv(guess_cov_inv)
-    guesses.append(data_to_x(guess_mu, guess_cov))
-guesses = np.array(guesses)
+    return data_to_x(guess_mu, guess_cov)
 
-df = pd.DataFrame(guesses)
-df.columns = ['x', 'y', 'var_x', 'cov_xy', 'var_y']
-df.to_csv('guesses.csv', index=False)
+if __name__ == '__main__':
+    N = 500
+    
+    pool = Pool(processes=8)
+    
+    futures = []
+    for _ in range(N):
+        future = pool.apply_async(experiment, ())
+        futures.append(future)
+    
+    guesses = []
+    for future in futures:
+        guess = future.get()
+        if guess is None:
+            continue
+        guesses.append(guess)
+    
+    df = pd.DataFrame(guesses)
+    df.columns = ['x', 'y', 'var_x', 'cov_xy', 'var_y']
+    #df.to_csv('guesses.csv', index=False)
 
-print('count', len(df.index))
-print('mean')
-print(df.mean())
-print('std')
-print(df.std())
+    print('count', len(df.index))
+    print('mean')
+    print(df.mean())
+    print('std')
+    print(df.std())
 
-plt.hist(df['x'])
-plt.show()
-
-plt.hist(df['var_x'])
-plt.show()
+    #plt.hist(df['x'])
+    #plt.show()
+    #plt.hist(df['var_x'])
+    #plt.show()
 
