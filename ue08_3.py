@@ -2,7 +2,6 @@
 # coding: utf-8
 
 import numpy as np
-import scipy.stats
 import matplotlib.pyplot as plt
 
 data = np.array([(5, 9), (10, 10), (15, 14), (20, 18), (25, 22), (30, 24), (40, 29), (50, 29)])
