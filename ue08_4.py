@@ -21,6 +21,10 @@ data = np.array([
     (1982, 80, 44.6)
 ])
 
+plt.plot(data[:,0], data[:,1])
+plt.plot(data[:,0], data[:,2])
+plt.show()
+
 plt.plot(data[:,1], data[:,2], '.b')
 plt.show()
 
